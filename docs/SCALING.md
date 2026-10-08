@@ -7,28 +7,23 @@ other context can pick this up cold. The `Ladder` and `Exit` pages were deleted 
 desk dropped the flip that day, so §5–6 are a record of why it was considered and what
 was measured, not a plan.
 
-Claims are marked. **Decided** = the desk said so. **Derived** = arithmetic. **Measured**
-= from data on disk, reproducible. **Open** = needs an answer before anything is built.
+**"The desk"** is the trader who owns this board and makes the decisions on it; a quote is
+theirs. Claims are marked. **Decided** = the desk said so. **Derived** = arithmetic.
+**Measured** = from data on disk, reproducible. **Open** = needs an answer before anything
+is built.
 
 ---
 
 ## 0. Picking this up cold
 
-- **Run the board**: `run_board.cmd`, or `python scripts/structure_board.py`, then
-  http://127.0.0.1:8060. Re-running it *is* the refresh — the workbook is read once at
-  import.
-- **Read first**: [BOARD.md](BOARD.md) for what every page does and why; this file for
-  the reasoning behind the ladder pages.
-- **Reproduce the measurements**: `python scripts/measure_wobble_sr3.py` and
-  `scripts/measure_wobble_zq.py`. Both read data already on disk and write
-  `docs/wobble_sr3.csv` / `docs/wobble_zq.csv`.
-- **Working conventions the desk has set**, which are not negotiable defaults:
-  - Responses in ALL-CAPS headings over bullets that open with a bolded handle. Prose
-    paragraphs get skimmed and lost.
-  - **Propose and wait.** No code changes without an explicit yes. This was set after
-    unrequested work, and reinforced after a whole page got built against a wrong model.
-  - One sizing rule per page, no mode menus. Flat, ramp and target-average were built and
-    deleted for being unprincipled; anything new needs an actual argument.
+- **Run it**: on the full board, `run_board.cmd` (http://127.0.0.1:8060). On a
+  trade-board copy, `run_trade.cmd` (http://127.0.0.1:8065).
+- **Read first**: [TRADE.md](TRADE.md) for what every control on the page does and why;
+  this file for the reasoning behind the sizing.
+- **Reproduce the measurements** (full board only; the scripts are not in a trade-board
+  copy): `python scripts/measure_wobble_sr3.py` and `scripts/measure_wobble_zq.py`.
+- **One sizing rule per page, no mode menus** (desk). Flat, ramp and target-average were
+  built and deleted for being unprincipled; anything new needs an actual argument.
 
 ---
 
@@ -66,7 +61,7 @@ Two consequences that keep reappearing:
 - **Filled per rung** (was `Held`) — type what you already have. On a working rung it is a **fill
   against that rung** and the rung shows what is left; anywhere else it is a prior
   position, charged against the same budget. Overfill comes out of the rungs not yet
-  filled (2026-09-24; BOARD.md has the worked numbers).
+  filled (2026-09-24; TRADE.md has the worked numbers).
 - **Max loss is a hard cap** (desk, 2026-09-29). Filled plus still to work never goes over
   it. Whatever overfill the empty rungs cannot absorb comes off what is left on the
   rungs nearest the stop, starting with the one closest to the stop.
@@ -166,7 +161,7 @@ Two consequences that keep reappearing:
 
 - **The settle box** shows each whole-trade P&L figure again, measured from settle
   instead of entry, because the statement marks the book there daily. It is the entry
-  figure less what the statement already shows. Nothing is sized on it. BOARD.md has
+  figure less what the statement already shows. Nothing is sized on it. TRADE.md has
   the details.
 
 ### Shared
@@ -224,8 +219,10 @@ scaling out   a lot costs  |target − p|   what it GIVES UP if the move runs on
   would take unbounded size, exactly as the scale-in excludes its stop.
 - **Lots sum to the position exactly.** Equality, not a ceiling — anything left over is a
   lot you forgot to sell. The one place the arithmetic differs from the scale-in.
-- **The rung next to flat-by is pulled by default. Decided 2026-09-23.** The mirror of
-  the scale-in pulling the rung next to its stop, and for the same reason: equal regret
+- **History — the rung next to flat-by was pulled by default** on the Exit page
+  (2026-09-23). **Trade does not pull it: coming out, nothing is pulled by default**
+  (desk, 2026-09-24; §2). The reasoning stays for the record. It mirrored the scale-in
+  pulling the rung next to its stop, and for the same reason: equal regret
   gives that rung the biggest lot on the ladder — 68 of 167 on a six-rung exit, 11 at the
   first. Held off below three rungs; click to put it back; `Clear skips` puts it back.
   **What it costs, measured:** that rung is also the best price, so the average falls.

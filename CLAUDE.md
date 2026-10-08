@@ -41,6 +41,20 @@ come before anything else.
   up, then copy the old `plans\` folder into the new one. Delete the old folder only when
   the person says so, after they have checked their plans load.
 
+## Answering questions about the logic
+
+When the person asks why the page sizes something the way it does:
+
+- **Read before answering:** `docs/TRADE.md` (what each control does), then
+  `docs/SCALING.md` (why), then the code in `lib/` (`ladder.py` in, `exits.py` out,
+  `cuts.py` the cut).
+- **Say where the answer comes from** (file and section), and whether the point is
+  **Decided** (the board owner's call) or **Derived** (arithmetic). The docs label them.
+- **If the docs do not cover it, say so** and suggest asking the board's owner. Do not
+  fill the gap with a plausible rule; a guess about the owner's intent reads as fact.
+- You can run the arithmetic to show a number: `lib/` is plain Python, and
+  `tests/test_trade_cap.py` shows how to call it.
+
 ## Setup (first time)
 
 Windows. Run these from the folder this file is in.
@@ -122,6 +136,7 @@ lib/cuts.py              the cut past the stop (OUT BY)
 lib/plans.py             saves and loads plans in plans\
 assets/                  the page's look and its two small scripts
 tests/                   the max-loss cap tests
+docs/TRADE.md            what everything on the page does
 docs/SCALING.md          the reasoning behind the sizing
 run_trade.cmd            start it
 backup_plans.cmd         copy plans\ to Documents
