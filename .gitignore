@@ -1,0 +1,9 @@
+# Saved trade plans: this PC's own, never in git. A pull never touches them.
+plans/
+
+# The Python environment set up on this PC.
+.venv/
+
+# Python bytecode
+__pycache__/
+*.pyc
