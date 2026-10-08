@@ -273,10 +273,15 @@ def plan(entry: float, stop: float, target: float, max_loss: float, side: str,
     Sold out of it
     --------------
     `sold_lots` sold out of the held position come off it at the same average -- a
-    partial sale does not move the cost basis -- and both the risk they no longer carry
-    and `sold_bp` (lot-bp they banked, positive is profit) are credited to the budget:
-    the max loss is what the trade may cost IN TOTAL, and profit already banked is part
-    of that total. Both zero on the Ladder page, which never sells.
+    partial sale does not move the cost basis -- and `sold_bp` (lot-bp they banked,
+    positive is profit) is booked P&L: it is on every row's loss and P&L.
+
+    **A sale never changes the way in** (desk, 2026-10-08: "max loss only ever covers
+    open risk"). Max loss is spent once. Neither the profit a sale banks nor the risk the
+    sold lots stop carrying goes back into the budget, so the rungs are sized, and capped,
+    exactly as if nothing had been sold. It used to credit both, and a sale put lots back
+    to work on rungs already filled -- the desk: "this was irritating me till now".
+    `cap_rows` is that unsold book, depth by depth, for the cut's checks (lib/cuts.py).
     """
     dpb = DOLLARS_PER_BP[instrument]
     sgn = sign(side)
@@ -311,10 +316,9 @@ def plan(entry: float, stop: float, target: float, max_loss: float, side: str,
         sold_bp = 0.0
     total_bp = max_loss / dpb if dpb else 0.0
     prior_risk_bp = prior_n * sgn * (prior_avg - ref) if prior_n else 0.0
-    sold_credit_bp = (sold_lots * sgn * (havg - ref) if sold_lots else 0.0) + sold_bp
 
-    # The plan: sized once, on what the prior position and any sales leave.
-    budget_bp = max(0.0, total_bp - prior_risk_bp + sold_credit_bp)
+    # The plan: sized once, on what the prior position leaves. Sales give nothing back.
+    budget_bp = max(0.0, total_bp - prior_risk_bp)
     planned = allocate(risk, weights(live, risk), budget_bp)
 
     # Fills against it. Overfill comes out of the rungs with nothing filled yet.
@@ -335,10 +339,12 @@ def plan(entry: float, stop: float, target: float, max_loss: float, side: str,
     # only draws on rungs with nothing filled, so when every rung is part-filled the
     # extra was kept and the ladder went over. Whatever is still over comes off the
     # rungs nearest the stop first, so the rungs likely to fill next keep their size.
+    # Measured on the book before any sale, which is what the budget was spent on.
     net = max(0, held_all - sold_lots)
     held_risk_bp = net * sgn * (havg - ref) if net and havg is not None else 0.0
     held_risk_bp -= sold_bp
-    excess = held_risk_bp + sum(q * r for q, r in zip(lots, risk)) - total_bp
+    unsold_bp = held_all * sgn * (havg - ref) if held_all and havg is not None else 0.0
+    excess = unsold_bp + sum(q * r for q, r in zip(lots, risk)) - total_bp
     for i in reversed(range(len(lots))):
         if excess <= 1e-9:
             break
@@ -351,6 +357,7 @@ def plan(entry: float, stop: float, target: float, max_loss: float, side: str,
     # The book as it stands -- prior position and fills, less what was sold -- with the
     # rungs adding what is left of them, depth by depth.
     rows = depth_table(live, lots, ref, target, dpb, side, net, havg, sold_bp)
+    cap_rows = depth_table(live, lots, ref, target, dpb, side, held_all, havg)
     filled = [r for r in rows if r["pos"] > 0]
     spent = (rows[-1]["risk_bp"] * dpb) if rows else 0.0
     return {
@@ -362,13 +369,14 @@ def plan(entry: float, stop: float, target: float, max_loss: float, side: str,
         "fills": {p: q for p, q in fills.items()}, "prior": prior_n,
         "prior_risk": prior_risk_bp * dpb,
         "excluded": sorted(excl, reverse=(side == "buy")),
-        "risk": risk, "rows": rows, "full": filled[-1] if filled else None,
+        "risk": risk, "rows": rows, "cap_rows": cap_rows,
+        "full": filled[-1] if filled else None,
         "entry": entry, "stop": stop, "target": target,
         "held": net, "held_avg": havg, "held_risk": held_risk_bp * dpb,
         "sold": sold_lots, "banked": sold_bp * dpb,
         "held_levels": {float(k): int(v) for k, v in held_map.items()},
-        "over_budget": held_risk_bp >= total_bp and net > 0,
-        "over_by": max(0.0, (held_risk_bp - total_bp) * dpb),
+        "over_budget": unsold_bp >= total_bp and held_all > 0,
+        "over_by": max(0.0, (unsold_bp - total_bp) * dpb),
         "new_lots": sum(lots),
         "max_loss": max_loss, "spent": spent, "unspent": max_loss - spent,
         "used_pct": 100.0 * spent / max_loss if max_loss else 0.0,

@@ -1251,8 +1251,8 @@ def _trade_setup(inst, side, mark, entry, held_map, sold_map, stop, first, targe
 
     # The cut's rungs: one past the stop to OUT BY, less any you have already cut through.
     dpb = ladder.DOLLARS_PER_BP[inst]
-    cut_ahead = (cuts.ahead_levels(cuts.cut_levels(stop, out_by, side), sold, stop, side)
-                 if out_by is not None else [])
+    cut_all = cuts.cut_levels(stop, out_by, side) if out_by is not None else []
+    cut_ahead = cuts.ahead_levels(cut_all, sold, stop, side) if out_by is not None else []
 
     def cut_ref(avg):
         """What a book on at `avg` loses to: the stop, or with a cut, the cut's average."""
@@ -1266,7 +1266,9 @@ def _trade_setup(inst, side, mark, entry, held_map, sold_map, stop, first, targe
         if out_by is None:
             return at(None, max_loss)
         # Sized to the cut's average, so the whole book cut through OUT BY fits max loss.
-        return cuts.fit_in(at, cut_ahead, side, max_loss, dpb, sold_bp,
+        # On every cut rung and with no credit for sales: a sale, cuts included, never
+        # changes the way in (desk, 2026-10-08).
+        return cuts.fit_in(at, cut_all, side, max_loss, dpb, 0.0,
                            fallback=out_by, start=stop)[0]
 
     # Rungs the peak sizes to nothing are skips (desk, 2026-09-27): derived, re-picked

@@ -10,7 +10,7 @@ full setup, update and safety steps.
 ## Setup (Windows, Python 3.10+ and git)
 
 ```
-git clone https://github.com/<OWNER>/trade-board.git
+git clone https://github.com/Mathur-Git/trade-board.git
 cd trade-board
 py -3.11 -m venv .venv
 .venv\Scripts\python -m pip install -r requirements.txt

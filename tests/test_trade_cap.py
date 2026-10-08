@@ -105,7 +105,7 @@ def test_no_word_when_the_filled_book_fits():
 
 
 # Sold past Filled: only as many lots as were filled count, the least profitable first,
-# so what the sales bank is never overstated -- it is credited against max loss.
+# so what the sales bank is never overstated -- it is booked P&L.
 LONG_10 = dict(inst="SR3", side="buy", mark="21", entry="21", stop="19", target="23",
                max_loss="5000", held_map={key(21.0): 10})
 
@@ -173,3 +173,42 @@ def test_the_cap_holds_at_every_depth_on_random_trades():
         assert worst_loss(s) <= bound + 0.01, kw
         if held is not None and held > ml + 0.01:
             assert sum(s["lp"]["lots"]) == 0, kw
+
+
+# A sale never changes the way in (desk, 2026-10-08: "max loss only ever covers open
+# risk"). Neither the profit it banks nor the risk the sold lots stop carrying goes back
+# into the budget. It used to credit both: filled 33 at 21.0 and 44 at 20.5, 20 sold at
+# 21.5, put 9 and 11 lots back to work on the two filled rungs and 20.0 went 67 -> 83.
+ROUND = dict(inst="SR3", side="buy", mark="21.5", entry="21", stop="19", first="21.5",
+             target="23", max_loss="5000", held_map={key(21.0): 33, key(20.5): 44})
+
+
+@pytest.mark.parametrize("flip", [False, True], ids=["long", "short"])
+def test_a_sale_leaves_the_way_in_as_it_was(flip):
+    kw = dict(ROUND, sold_map={key(21.5): 20})
+    s = setup(**(mirror(kw) if flip else kw))
+    assert s["lp"]["lots"] == [0, 0, 67]
+    assert s["lp"]["banked"] == pytest.approx(20 * (21.5 - (33 * 21 + 44 * 20.5) / 77) * 25)
+
+
+def test_what_a_sale_banks_is_on_the_pnl_not_the_budget():
+    before, after = setup(**ROUND), setup(**dict(ROUND, sold_map={key(21.5): 20}))
+    held_b = next(r for r in before["lp"]["rows"] if r["held"])
+    held_a = next(r for r in after["lp"]["rows"] if r["held"])
+    # 57 lots still on, at the same average, and the 20 sold banked their profit: booked
+    assert held_a["pos"] == 57 and held_a["avg"] == pytest.approx(held_b["avg"])
+    assert held_a["loss"] == pytest.approx(57 / 77 * held_b["loss"] - after["lp"]["banked"])
+
+
+def test_sales_never_change_the_way_in_on_random_trades():
+    r = random.Random(20261008)
+    for _ in range(300):
+        kw = _random_trade(r)
+        if not kw["held_map"]:
+            continue
+        side = 1 if kw["side"] == "buy" else -1
+        base = setup(**kw)
+        held = sum(kw["held_map"].values())
+        sold = {key(float(kw["mark"]) + side * r.randint(-6, 8) * T): r.randint(1, held)}
+        s = setup(**dict(kw, sold_map=sold))
+        assert s["lp"]["lots"] == base["lp"]["lots"], (kw, sold)

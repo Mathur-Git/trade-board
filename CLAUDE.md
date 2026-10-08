@@ -11,7 +11,7 @@ come before anything else.
   that runs on this PC only, at `http://127.0.0.1:8065`.
 - **Read-only code, from someone else.** It is exported from a larger STIR board (that
   board's owner keeps the master copy) and published at
-  `https://github.com/<OWNER>/trade-board`. The person you are working with only
+  `https://github.com/Mathur-Git/trade-board`. The person you are working with only
   **pulls**. They cannot push, and you must not commit, push or change any tracked file.
   If they want a change, they ask the board's owner, who adds it and publishes it; then
   you pull it.
@@ -56,7 +56,7 @@ Windows. Run these from the folder this file is in.
 3. **Clone** (skip this if you are already inside the cloned folder). Ask where they
    want it, e.g. the Desktop:
    ```
-   git clone https://github.com/<OWNER>/trade-board.git
+   git clone https://github.com/Mathur-Git/trade-board.git
    cd trade-board
    ```
 4. **Make a private Python environment in this folder**, so nothing else on the PC is

@@ -1043,30 +1043,21 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
 .cod-tag-stress { color: #ff6961; background: rgba(255,69,58,0.14); border-color: rgba(255,69,58,0.45); }
 .theme-light .cod-tag-stress { color: #c40015; background: rgba(215,0,21,0.08);
                                border-color: rgba(215,0,21,0.35); }
-/* before the type (desk, 2026-10-08): LIVE and the time of the prices drawn, filled, or
-   SETTLE and its date, outlined -- set by what the chart was drawn from, not the toggle */
-.cod-badge { display: inline-block; margin-right: 10px; padding: 1px 7px; border-radius: 4px;
-             font-size: var(--fs-ui); font-weight: 600; vertical-align: 2px; color: var(--t2);
+/* beside the date box (desk, 2026-10-08: it belongs with the date): LIVE and the time of
+   the prices drawn, filled red, or SETTLE and its date, outlined -- set by what the chart
+   was drawn from, not the toggle */
+.cod-badge { display: inline-block; padding: 1px 7px; border-radius: 4px; white-space: nowrap;
+             font-size: var(--fs-ui); font-weight: 600; color: var(--t2);
              border: 1px solid var(--stroke-strong); font-variant-numeric: tabular-nums; }
-.cod-badge-live { color: #fff; background: var(--accent); border-color: var(--accent); }
+.cod-badge-live { color: #fff; background: var(--mark); border-color: var(--mark); }
+/* the comparison beside the type, in normal case: it is a sentence, not a label */
+.cod-window { text-transform: none; letter-spacing: 0; font-size: var(--fs-ui); }
 .cod-grid .pane-left { min-height: 0; }
+/* the change two fifths, Day by day beside it three fifths (desk, 2026-10-08) */
+.cod-grid { grid-template-columns: 2fr 3fr; }
+@media (max-width: 1100px) { .cod-grid { grid-template-columns: 1fr; } }
 .cod-panel + .cod-panel { margin-top: 14px; }
-/* The read-out, the right side (desk, 2026-10-06: "less is more"): the day -- its size,
-   the last move as big, its curve -- and Wider, the week and the month, each a stat table
-   under its head. The window the chart shows is lit, as a selection is; a 2 sd size is set
-   in ink. A reading with nothing to say is one faint line. */
-.cod-block + .cod-block { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--rule); }
-.cod-tbl td { padding: 6px 3px; vertical-align: top; }
-.cod-tbl .cod-from { font-size: var(--fs-micro); color: var(--t4); }
-.cod-tbl td.val.txt { font-family: var(--ff); }
-.cod-tbl td.val.cod-lit { color: var(--accent); background: var(--accent-bg); }
-.cod-tbl td.val.cod-ink { color: var(--t1); font-weight: 600; }
-.cod-tbl td.cod-detail { color: var(--t3); padding-left: 12px; line-height: 1.45; }
-.cod-wider td.val.txt { text-align: left; padding-left: 12px; }     /* the swatches in a column */
-.cod-off { font-size: var(--fs-ui); color: var(--t4); }
-/* Day by day, under the change on each contract */
-.cod-days-head { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }
-/* its types (desk, 2026-10-06): a pill dims every other type, the arrows step to the
+/* Day by day's types (desk, 2026-10-06): a pill dims every other type, the arrows step to the
    previous or next bar of it, and the count says where the date sits among them */
 .cod-match { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 2px; }
 /* the types as a grid (desk, 2026-10-07): bull, twist and bear across, steepening and

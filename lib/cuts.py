@@ -174,9 +174,15 @@ def plan(avg: float | None, position: int, stop: float, out_by: float, side: str
     }
 
 
+def _sized(lp: dict) -> list[dict]:
+    """The rows the cap is checked on: the book before any sale (`cap_rows`), since a sale
+    never changes the way in (desk, 2026-10-08). A plan without them uses its rows."""
+    return lp.get("cap_rows") or lp.get("rows") or []
+
+
 def _full(lp: dict):
     """The full fill's book, (lots, average), or None with nothing on."""
-    rows = [r for r in lp.get("rows") or [] if r["pos"] > 0]
+    rows = [r for r in _sized(lp) if r["pos"] > 0]
     return (rows[-1]["pos"], rows[-1]["avg"]) if rows else None
 
 
@@ -194,8 +200,9 @@ def fit_in(plan_at, levels: list[float], side: str, max_loss: float, dpb: float,
       (`start`), then to the full fill's cut average, until it stops moving. It barely
       moves, so a few passes do it.
     - **The cap** (desk, 2026-09-29), exactly, at every depth (2026-10-04). Each depth's
-      book cut through every rung, less what sales have already banked, must not exceed
-      max loss. Usually the full fill is the worst depth, since each lot added only adds
+      book cut through every rung must not exceed max loss -- the book as if nothing were
+      sold (`_sized`): what sales bank is booked P&L, never more room (desk, 2026-10-08).
+      `banked_bp` is subtracted only if a caller passes it; the Trade page does not. Usually the full fill is the worst depth, since each lot added only adds
       to the loss -- but not when fills sit past the stop. While a book's average is at
       or past a cut rung the cut is split evenly (`weights`), and a shallower depth can
       lose more than the full fill. So: if the full fill is over -- whole lots, or the
@@ -232,7 +239,7 @@ def fit_in(plan_at, levels: list[float], side: str, max_loss: float, dpb: float,
 
     def worst_over(p: dict) -> float:
         """Dollars the worst depth's book, cut through the band, is over max loss."""
-        rows = [r for r in p.get("rows") or [] if r["pos"] > 0]
+        rows = [r for r in _sized(p) if r["pos"] > 0]
         worst = max(((loss_bp(r["pos"], r["avg"], levels, side, fallback) - banked_bp) * dpb
                      for r in rows), default=0.0)
         return worst - max_loss

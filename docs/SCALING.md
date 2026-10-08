@@ -140,10 +140,24 @@ Two consequences that keep reappearing:
   half: full fill printed **$15,875, R:R 3.17** against the **$10,762, 2.15** the exit
   beside it banked. The deleted Ladder page valued at its target; it had no exit ladder.
 - **`Sold` sits outside `Out`**, as `Filled` sits outside `In`. Sold lots come off `Filled`
-  at its average, and what they banked is **credited to the loss budget** — `max loss` is
-  what the trade may cost in total (§1), and profit already made is part of that total.
-  *My call on the stated definition, not a desk decision; the conservative alternative is
-  to charge open risk and ignore the banked — one line in `ladder.plan`.*
+  at its average, and what they banked is **booked P&L**: it is on every loss and P&L
+  figure, and it never goes back into the budget.
+- **A sale never changes the way in. Decided 2026-10-08** (desk: "max loss only ever
+  covers open risk"). Max loss is spent once: neither the profit a sale banks nor the risk
+  the sold lots stop carrying is handed back, so the way in is sized and capped exactly as
+  if nothing were sold. *History:* until 2026-10-08 both were credited, my call and not
+  the desk's, and a sale put lots back to work on rungs already filled (filled 33 at 21.0
+  and 44 at 20.5, 20 sold at 21.5: 9 and 11 lots reappeared on the filled rungs and 20.0
+  went 67 → 83). The desk: "this was irritating me till now".
+- **Round trips are not Sold. Decided 2026-10-08.** Lots sold to be bought back — trading
+  around the position, not exiting — are recorded by taking them off `Filled` at the rung
+  you mean to buy them back at, which puts that rung back to work. Taking lots off Filled
+  at a rung is the page's way of saying they were sold AT that rung, so it forgets the
+  round trip's profit — lots × (price sold − that rung) × $/bp — and states the loss at the
+  stop that much too high: the safe side of max loss. Sold would get the money right but
+  passes the exit rungs behind the sale. The profit is booked P&L and never lets the
+  trade risk more. Not on the page, by the desk's choice (§5: flipping stays off it); a
+  Rebuy column is in reserve (§7).
 - **Default skips** (desk, 2026-09-24): going in, only the rung right above the stop is
   pulled (the entry rung is worked); coming out, nothing is pulled. The deleted pages
   differed: `Ladder` pulled both ends, `Exit` the rung next to flat-by.
@@ -422,6 +436,11 @@ over — about **$4,167 a quarter** on 20 flip lots against **$1,042** forgone. 
    still the missing piece for `Sold` (§8).
 6. **Intraday data** for the tight-band undercount — moot for flipping; still the way to
    settle any band-width measurement.
+7. **A Rebuy column — in reserve** (desk, 2026-10-08: "keep it in reserve and add to
+   future plan implementation"). For round trips (§2): type the lots at the rung sold, click
+   the rung to buy them back at; the page takes them off the position, books the profit,
+   works them at the rebuy rung and leaves the exit ladder alone. Not built. Until then,
+   round trips go through Filled.
 
 ---
 
@@ -504,8 +523,8 @@ lot cut deeper loses more.
   rungs nearest the stop. That keeps the whole lots' loss at or under the unrounded
   figure, which is the bound the tables report.
 - **The cap is exact** (desk, 2026-09-29). After the iteration, the full fill cut through
-  OUT BY, less what sales have banked, is checked against max loss. Any excess comes off
-  the way in's budget.
+  OUT BY is checked against max loss, on the book as if nothing were sold (2026-10-08:
+  cuts and sales give nothing back). Any excess comes off the way in's budget.
 - **The full fill is usually the worst depth, so every depth is checked** (2026-10-04).
   A book's loss is `n` times the harmonic mean of `A − xᵢ`, and every lot added only
   raises that -- while `A` stays clear of the band. Fills typed past the stop can put a
