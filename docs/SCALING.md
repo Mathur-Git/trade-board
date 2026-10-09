@@ -54,8 +54,8 @@ Two consequences that keep reappearing:
   `ladder.plan`, which Trade's way in runs.
 - **Equal risk.** Every level puts the same dollars at risk, so an even split of dollars
   buys uneven lots: 21.0 → 19.0 stop on $5k gives 25 / 33 / 50 / 101.
-- **Stop and target are right-drag flags** — right button because that is the gesture on
-  the platform the desk trades.
+- **Stop and target are drag flags** — left button since 2026-10-09 (desk); it was the
+  right, the gesture on the platform the desk trades, until then.
 - **Default skips are derived, not stored**, so moving the entry or stop re-picks them.
   The Ladder page pulled both end rungs; Trade pulls only the rung above the stop.
 - **Filled per rung** (was `Held`) — type what you already have. On a working rung it is a **fill

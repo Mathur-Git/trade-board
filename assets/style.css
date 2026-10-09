@@ -693,6 +693,35 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
 .lad-outby .lad-mark-c { color: var(--mark); }
 #trade-wrap .tr-out-c.tr-cut { box-shadow: inset -2px 0 0 var(--mark); }
 
+/* -- Trade: EXIT Off (desk, 2026-10-09) ----------------------------------- */
+/* Hides the way out, and the cut with it, for showing the page to someone. A view only:
+   nothing is resized. Gone from the ladder: OUT and its bar, SOLD, LEFT, OUT REGRET and
+   the blue dot column (the renderer leaves them empty and shortens the foot's label
+   span to match). Gone from the head: peak out and Clear sold. On the right: the
+   way-out table, and the first exit's box and the average out, kept as blank cells so
+   the levels table keeps its rows. TGT stays -- P&L is valued to it. */
+#trade-wrap .tr-exit-off .lad-table .lad-ask-c,
+#trade-wrap .tr-exit-off .lad-table .tr-out-c,
+#trade-wrap .tr-exit-off .lad-table .ex-sold-c,
+#trade-wrap .tr-exit-off .lad-table .tr-left-c,
+#trade-wrap .tr-exit-off .lad-table .tr-risk-o,
+#trade-wrap .tr-exit-off .lad-table .tr-peak-out-c,
+#trade-wrap .tr-exit-off .tr-peak-out-ctl,
+#trade-wrap .tr-exit-off #tr-clear-sold,
+#trade-wrap .tr-exit-off #tr-exit-head,
+#trade-wrap .tr-exit-off #tr-exit { display: none; }
+#trade-wrap .tr-exit-off #tr-first,
+#trade-wrap .tr-exit-off #tr-first-use,
+#trade-wrap .tr-exit-off #tr-avg-out { visibility: hidden; }
+/* The ladder is 250px narrower without those columns (32 + 38 + 44 + 40 + 76 + 20), so
+   its side of the grid and the panel shrink by that much -- above the stacking width
+   only, or this rule would outrank the media query's single column. */
+@media (min-width: 1101px) {
+    #trade-wrap .tr-exit-off .lad-grid {
+        grid-template-columns: minmax(0, 476px) minmax(0, 540px); }
+    #trade-wrap .tr-main.tr-exit-off { max-width: 1076px; }
+}
+
 /* -- Trade: the levels as a table ---------------------------------------- */
 /* IN beside OUT, so each level sits next to its partner and the two averages they
    produce sit underneath -- the same ruled style as the tables below it. */
@@ -1050,6 +1079,8 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
              font-size: var(--fs-ui); font-weight: 600; color: var(--t2);
              border: 1px solid var(--stroke-strong); font-variant-numeric: tabular-nums; }
 .cod-badge-live { color: #fff; background: var(--mark); border-color: var(--mark); }
+/* the type and its comparison, one line centred over the COD chart (desk, 2026-10-08) */
+.cod-title-line { justify-content: center; align-items: baseline; gap: 12px; }
 /* the comparison beside the type, in normal case: it is a sentence, not a label */
 .cod-window { text-transform: none; letter-spacing: 0; font-size: var(--fs-ui); }
 .cod-grid .pane-left { min-height: 0; }
@@ -1087,6 +1118,9 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
 .cod-split-tbl tr.cod-split-on td { color: var(--t1); }
 .cod-split-tbl tr.cod-split-noise td { color: var(--t4); }
 .cod-split-tbl tr.cod-split-noise .risk-sw { opacity: 0.35; }
+/* each PC over time: the picked PC's row lit, the heads wrapping so ten columns fit */
+.cod-dist-tbl tr.cod-dist-on td { background: var(--fill); color: var(--t1); }
+.cod-dist-tbl th { white-space: normal; vertical-align: bottom; }
 .cod-split-tbl .cod-split-tag { font-size: var(--fs-micro); color: var(--t4); letter-spacing: 0.04em; }
 .cod-split-tbl tr.cod-split-sum td { color: var(--t3); border-top: 1px solid var(--rule); }
 
@@ -1167,7 +1201,7 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
 /* the size box never narrower than a size: it was squeezed to "(:" (2026-10-08) */
 .risk-mix .risk-in { min-width: 76px; }
 .risk-tbl td.sw .risk-sw { vertical-align: 0; }
-.risk-mix td:nth-child(4) { width: 130px; }
+.risk-mix td:nth-child(4) { width: 90px; }
 .risk-mix td:nth-child(5) { width: 90px; }
 .risk-read { font-size: var(--fs-ui); color: var(--t2); line-height: 1.5; padding: 4px 2px 4px; }
 .risk-read b { color: var(--t1); font-weight: 600; }
@@ -1179,6 +1213,40 @@ body.lad-dragging { user-select: none; cursor: grabbing; }
 .risk-types tr.risk-click:hover td { background: var(--fill); }
 .risk-types td .cod-sw { margin-right: 7px; }
 .risk-types th { white-space: normal; vertical-align: bottom; }
+/* the COD grid (2026-10-09): a lean per pair, then a COD's row of tiles over its mirror's,
+   lined up by peak; the ranked list beside it. A tile is a button: its peak (or size), its
+   usual shape, the book's middle $ big, its worst and best 10%, how likely */
+.risk-grid-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 20px;
+                  align-items: start; }
+@media (max-width: 1250px) { .risk-grid-wrap { grid-template-columns: 1fr; } }
+.risk-lean { display: flex; align-items: center; gap: 10px; margin: 14px 0 5px; }
+.risk-grid-body > .risk-lean:first-child { margin-top: 4px; }
+.risk-tile-row { display: grid; grid-template-columns: 132px minmax(0, 1fr); align-items: center;
+                 gap: 8px; margin: 4px 0; }
+.risk-row-lbl { font-size: var(--fs-ui); color: var(--t1); line-height: 1.35; }
+.risk-row-lbl .cod-sw { margin-right: 6px; }
+.risk-row-sub { display: block; font-size: var(--fs-micro); color: var(--t4); padding-left: 15px; }
+.risk-tiles { display: flex; flex-wrap: wrap; gap: 6px; }
+.risk-tile { width: 112px; padding: 5px 7px 5px; border: 1px solid var(--rule); border-radius: 8px;
+             background: transparent; cursor: pointer; text-align: left; color: var(--t2);
+             font-family: var(--ff-num); display: flex; flex-direction: column; gap: 2px; }
+.risk-tile:hover { border-color: var(--accent-brd); }
+.risk-tile-on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.risk-tile-few { opacity: 0.5; }
+.risk-tile-head { font-family: var(--ff); font-size: var(--fs-micro); color: var(--t3); }
+.risk-spark { display: block; margin: 1px 0; }
+.risk-tile-mid { font-size: 15px; font-weight: 600; color: var(--t1); }
+.risk-tile-sub, .risk-tile-comes { font-size: var(--fs-micro); color: var(--t3); white-space: nowrap; }
+.risk-tile-comes { color: var(--t4); }
+.risk-ranked { display: flex; flex-direction: column; gap: 4px; padding-top: 4px; }
+.risk-rank { display: grid; grid-template-columns: 14px minmax(0, 1fr) auto; gap: 6px;
+             align-items: center; padding: 5px 8px; border: 1px solid var(--rule); border-radius: 7px;
+             background: transparent; color: var(--t2); cursor: pointer; text-align: left;
+             font-size: var(--fs-ui); }
+.risk-rank:hover { background: var(--fill); }
+.risk-rank-on { border-color: var(--accent); }
+.risk-rank-val { font-family: var(--ff-num); color: var(--t1); font-weight: 600; }
+.risk-ladder th.risk-lad-grp { text-align: center; }
 .risk-types td.l:first-child { white-space: normal; line-height: 1.3; }
 /* a second block on a side, under a rule: the hedges under what moves the book */
 .risk-block { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--rule); }

@@ -1,4 +1,4 @@
-/* Right-drag a flag up and down a ladder.
+/* Drag a flag up and down a ladder with the left button.
  *
  * Dash has no drag primitive, so this is a plain document-level mouse handler. It is
  * generic: everything it needs is written onto the flag itself by the renderer that
@@ -12,10 +12,10 @@
  * on the winning side, nothing leaves the drawn window -- so it renders the legal range
  * rather than this script re-deriving rules it would then have to keep in step.
  *
- * RIGHT button, not left: that is the gesture on the platform the desk trades on, so it
- * is the one already in everyone's hands for moving a stop or a target. The context menu
- * is suppressed over the flags and for a moment after a drop, since Chrome raises it on
- * mousedown for the right button.
+ * LEFT button (desk, 2026-10-09). It was the right, the gesture on the platform the desk
+ * trades on, until the desk asked for the left; the right button now gets the browser's
+ * own menu back. The click that follows a drop is swallowed, so letting go over a size
+ * or a dot never skips or picks anything.
  *
  * On release it writes through the native value setter plus an `input` event; assigning
  * `.value` updates the DOM and React never hears about it. That is a documented
@@ -40,15 +40,17 @@
     var drag = null;
     var suppressUntil = 0;
 
-    document.addEventListener("contextmenu", function (e) {
-        if (drag || Date.now() < suppressUntil ||
-            (e.target.closest && e.target.closest(".lad-flag"))) {
+    // Capture phase, on the document: it runs before React's own listener, so a click
+    // stopped here never reaches a Dash n_clicks.
+    document.addEventListener("click", function (e) {
+        if (Date.now() < suppressUntil) {
+            e.stopPropagation();
             e.preventDefault();
         }
-    });
+    }, true);
 
     document.addEventListener("mousedown", function (e) {
-        if (e.button !== 2 || !e.target.closest) return;
+        if (e.button !== 0 || !e.target.closest) return;
         var flag = e.target.closest(".lad-flag");
         if (!flag) return;
 
@@ -104,7 +106,7 @@
         if (!drag) return;
         var d = drag;
         drag = null;
-        suppressUntil = Date.now() + 400;      // the menu that would follow the drop
+        suppressUntil = Date.now() + 400;      // the click that would follow the drop
         d.flag.classList.remove("dragging");
         d.flag.style.transform = "";
         document.body.classList.remove("lad-dragging");

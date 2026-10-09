@@ -72,11 +72,11 @@ which is where 19.957 is.
 It is an overlay running the full width of the price column, over the digits rather than
 around them: a line that breaks around a number is a line you reassemble by eye.
 
-**Levels are flags you RIGHT-drag.** Right button, not left, because that is the gesture
-on the platform the desk trades on — moving a stop or a target that way is already in
-everyone's hands, so it needs no teaching. The context menu is suppressed over the flags
-and for a moment after a drop, since Chrome raises it on mousedown. The rung you would
-drop on is outlined as you go, and on release the price is written into the matching
+**Levels are flags you drag with the LEFT button** (desk, 2026-10-09). Until then it was
+the right button, the gesture on the platform the desk trades on; the desk asked for the
+left, and the right button has the browser's own menu back. The click that follows a drop
+is swallowed, so letting go over a size or a dot never skips or picks anything. The rung
+you would drop on is outlined as you go, and on release the price is written into the matching
 field, which is still typeable. Movement is **clamped** to a legal range the server
 renders onto each flag — a stop stays on the losing side, a target on the winning side,
 nothing leaves the drawn window — so drag past a limit and you park on it.
@@ -243,7 +243,7 @@ are the ones worth reading.
 plan. Only what you would be selling changes, because only the position changes.
 
 **Four levels define the trade** — stop, entry, first exit, target — and all four
-right-drag. A fifth, OUT BY, is optional: the level past the stop you are fully out by
+drag. A fifth, OUT BY, is optional: the level past the stop you are fully out by
 (see [the cut](#trade-the-cut-past-the-stop)). The averages fall out of the sizing, so
 they do not drag.
 
@@ -528,7 +528,7 @@ market goes beyond it, the position comes out over the rungs from one past the s
 The reasoning and numbers are in SCALING.md §9, and the arithmetic is in `lib/cuts.py`.
 
 - **OUT BY** is a fifth level. It has a box in the levels table under END, in the IN
-  column, and a red flag under STOP in the IN marker column that right-drags like the
+  column, and a red flag under STOP in the IN marker column that drags like the
   others. It stays at least a rung past the stop, and the stop stays short of it.
 - **Blank is the page exactly as before.** The placeholder reads "at stop". A typed OUT BY
   that is not past the stop is ignored, and its cell says so.
@@ -677,7 +677,7 @@ it grew, so a new version never appeared.)
   it has handed out (`last_n`), so after v9 is deleted the next save is v10.
 - **Files:** `plans/<name>.json`, one per plan with all its versions (`lib/plans.py`).
   Not in git (desk): trade data that changes constantly and keeps its own history.
-- **This PC only** (desk, 2026-10-07): with the board on the office network, `Save version`,
+- **This PC only** (desk, 2026-10-07): if the board is on the office network, `Save version`,
   `Save as new`, `Archive plan` and `Delete vN` work only from the PC the board runs on,
   by `127.0.0.1` or its own address. The Risk book is filled from these files, so nobody
   else can change it. From another PC the saves and Archive answer "Plans are saved,
@@ -730,3 +730,25 @@ side of the market line. Buttons only, not a field; steps of one; held between *
 the sizing. The ladder is no longer height-capped on Trade, so every rung drawn is visible
 without a scroll. It runs in the browser rather than on the server, because server-side two
 quick clicks could read the same count and one was lost.
+
+## Trade: EXIT On · Off
+
+Desk, 2026-10-09: "i don't want to switch it off or anything i just want to hide it
+temporarily - it causes confusion when i am demonstrating the function of the trade
+board to someone". **exit On · Off** sits first on the panel's second line, before peak in.
+
+- **A view, never the sizing.** Every lot in, the cut and max loss are exactly what they
+  are with it On. It is not saved with a plan, does not light Save version, and a reload
+  brings it back On.
+- **What Off hides:** the way out and the cut with it (desk's pick). On the ladder: 1ST,
+  OUT and its bar, SOLD, LEFT, OUT REGRET, the blue dot column and the green out-average
+  line; the ladder and the panel get 250px narrower. In the head: peak out and Clear sold.
+  On the right: the way-out table, and the first exit's box and the average out (blank
+  cells, so the levels table keeps its rows). STOP and OUT BY stay, as levels.
+- **P&L runs to the target while Off** (desk: "calculate profits directly to target"): the
+  fill-depth table's P&L and R:R, the p&l $ and from settle $ OUT cells and the ladder's
+  "if it works" are the position valued at the target, plus what sales already banked —
+  `ladder.depth_table`'s pnl. With it On they stay what the way out banks.
+- **TGT stays and drags**, held only to being a profit on the entry: with no first exit
+  shown, none pushes the target out.
+- **The how-to lines** under the ladder and over the fill-depth table drop their "out".

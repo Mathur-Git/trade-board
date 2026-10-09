@@ -408,7 +408,8 @@ def _risk_txt(v: float) -> str:
     return "" if abs(v) < 0.5 else _d0(v)
 
 
-def _trade_marks(tags, side, lo, hi, entry, stop, first, target, avg, out_by=None):
+def _trade_marks(tags, side, lo, hi, entry, stop, first, target, avg, out_by=None,
+                 exit_on=True):
     """Marker chips. The levels that define the trade drag; the rest are computed.
 
     The first exit is bounded by the AVERAGE, not by the entry. Scaling a long down pulls
@@ -422,6 +423,9 @@ def _trade_marks(tags, side, lo, hi, entry, stop, first, target, avg, out_by=Non
     OUT BY stays at least a rung past the stop, and the stop short of it, so the cut
     always has a rung. AVG and FREE fall out of the sizing, so there is nowhere to drag
     them to.
+
+    With the exit hidden (`exit_on` False) there is no first exit to stay beyond, so the
+    target only has to be a profit on the entry -- what the page asks of a typed one.
     """
     t = ladder.TICK
     if side == "buy":                      # out_by < stop < entry ; avg < first < target
@@ -429,14 +433,14 @@ def _trade_marks(tags, side, lo, hi, entry, stop, first, target, avg, out_by=Non
                            round(entry - t, 6)),
                 "entry":  (round(stop + t, 6), hi),
                 "first":  (_first_profit(avg, "buy"), round(target - t, 6)),
-                "target": (round(first + t, 6), hi),
+                "target": (round((first if exit_on else entry) + t, 6), hi),
                 "outby":  (lo, round(stop - t, 6))}
     else:                                  # entry < stop < out_by ; target < first < avg
         band = {"stop":   (round(entry + t, 6),
                            hi if out_by is None else round(out_by - t, 6)),
                 "entry":  (lo, round(stop - t, 6)),
                 "first":  (round(target + t, 6), _first_profit(avg, "sell")),
-                "target": (lo, round(first - t, 6)),
+                "target": (lo, round((first if exit_on else entry) - t, 6)),
                 "outby":  (round(stop + t, 6), hi)}
     ids = {"stop": "tr-stop", "entry": "tr-entry",
            "first": "tr-first", "target": "tr-target", "outby": "tr-outby"}
@@ -454,7 +458,7 @@ def _trade_marks(tags, side, lo, hi, entry, stop, first, target, avg, out_by=Non
 
 def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C901
                 out_excl, ticks=TRADE_WINDOW_TICKS, sel=None, peak=None, shape_on=False,
-                peak_out=None, shape_out_on=False, cp=None, risk_ref=None):
+                peak_out=None, shape_out_on=False, cp=None, risk_ref=None, exit_on=True):
     """One ladder carrying both halves of the trade, and the cut past the stop.
 
     The cut (desk, 2026-09-30) sits in `Out` too, on the rungs from one past the stop to
@@ -485,21 +489,27 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
     The bars follow the side you would actually work: a long adds on the bid and sells
     on the ask, a short adds on the offer and covers on the bid. So the two halves fall
     on opposite sides of the spine without being told to.
+
+    `exit_on` False hides the way out (desk, 2026-10-09) and the cut with it: no 1ST, no
+    green rule, nothing worked or passed on either. The columns that carry them are
+    still drawn, empty, and the CSS hides them. TGT stays, at the target the way in
+    values its P&L to -- which a first exit no longer pushes out.
     """
     entry, stop = lp["entry"], lp["stop"]
-    first, target = ep["first"], ep["last"]
+    first, target = ep["first"], (ep["last"] if exit_on else lp["target"])
     out_by = cp["out_by"] if cp else None
     risk_ref = stop if risk_ref is None else risk_ref
 
     in_q = dict(zip(lp["levels"], lp["lots"]))
-    out_q = dict(zip(ep["levels"], ep["lots"]))
+    out_q = dict(zip(ep["levels"], ep["lots"])) if exit_on else {}
     in_at = {r["level"]: r for r in lp["rows"] if not r["held"] and r["depth"] > 0}
-    out_at = {r["level"]: r for r in ep["rows"] if r["depth"] > 0}
-    cut_q = dict(zip(cp["levels"], cp["lots"])) if cp else {}
-    cut_left = dict(zip(cp["levels"], cp["left"])) if cp else {}
+    out_at = {r["level"]: r for r in ep["rows"] if r["depth"] > 0} if exit_on else {}
+    cut_q = dict(zip(cp["levels"], cp["lots"])) if cp and exit_on else {}
+    cut_left = dict(zip(cp["levels"], cp["left"])) if cp and exit_on else {}
+    ahead = set(ep["ahead"]) if exit_on else set()
     held_map = held_map or {}
     sold_map = sold_map or {}
-    passed = set(ep["passed"]) | set(cp["passed"] if cp else ())
+    passed = (set(ep["passed"]) | set(cp["passed"] if cp else ())) if exit_on else set()
 
     lo, hi = _window(mark, side, ticks)
     n = int(round((hi - lo) / ladder.TICK))
@@ -511,7 +521,7 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
     # Two rules at their true heights: the average in (red) and, once there is a
     # position to sell, the average the way out takes it out at (green).
     avg_row, avg_frac = _rule_at(grid, avg)
-    out_avg = ep["avg_out"] if avg is not None else None
+    out_avg = ep["avg_out"] if avg is not None and exit_on else None
     out_row, out_frac = _rule_at(grid, out_avg)
     rules = [(avg_row, avg_frac, "lad-avgline"), (out_row, out_frac, "lad-avgline out")]
 
@@ -539,7 +549,7 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
         r_in = in_at.get(lv)
         unc = r_in is not None and sel is not None and r_in["depth"] > sel
         work_in = lv in lp["all_levels"]
-        work_out = lv in ep["ahead"]
+        work_out = lv in ahead
         # A cut rung, unless the way out is on it -- only an average dragged below the
         # stop by fills typed past it could put them together, and the way out wins.
         work_cut = lv in cut_q and not work_out
@@ -564,7 +574,7 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
         if abs(lv - stop) < 1e-9:
             cls.append("lad-stop")
             tags.append(("stop", "STOP"))
-        if abs(lv - first) < 1e-9:
+        if exit_on and abs(lv - first) < 1e-9:
             cls.append("ex-first")
             tags.append(("first", "1ST"))
         if abs(lv - target) < 1e-9:
@@ -661,10 +671,10 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
 
         rows.append(html.Tr(className=" ".join(cls), children=[
             html.Td(_trade_marks(tags_in, side, lo, hi, entry, stop, first, target,
-                                 avg if avg is not None else entry, out_by),
+                                 avg if avg is not None else entry, out_by, exit_on),
                     className="lad-mark-c mk-in"),
             html.Td(_trade_marks(tags_out, side, lo, hi, entry, stop, first, target,
-                                 avg if avg is not None else entry, out_by),
+                                 avg if avg is not None else entry, out_by, exit_on),
                     className="lad-mark-c mk-out"),
             held,
             cell(qi, skip_in, work_in, "tr-in-c" + (" tr-unc" if unc else ""), "in"),
@@ -677,7 +687,7 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
             html.Td(left_txt, className="tr-left-c"),
             html.Td(_risk_txt(h_risk), className="tr-risk-c"),
             html.Td(_risk_txt(i_risk), className="tr-risk-c" + (" tr-unc" if unc else "")),
-            html.Td(_risk_txt(o_regret), className="tr-risk-c"),
+            html.Td(_risk_txt(o_regret), className="tr-risk-c tr-risk-o"),
             dot,
             dot_o,
         ]))
@@ -703,12 +713,20 @@ def _trade_book(lp, ep, side, mark, avg, held_map, sold_map, in_excl,  # noqa: C
     banked = ep["banked"] if ep["sold"] else 0.0
     sold_regret = sum(regret_at(p, q) for p, q in ep["sold_levels"].items())
 
+    # With the exit hidden, four of the columns the label spans are gone (Out's bar, Out,
+    # Sold, Left), and a span over hidden cells would run on under FILLED RISK. What "it
+    # works" makes is then the picked depth valued at the target.
+    span = TRADE_LABEL_SPAN if exit_on else TRADE_LABEL_SPAN - 4
+    if not exit_on:
+        r_sel = next((r for r in lp["rows"] if r["depth"] == sel), None)
+        out_pnl, banked = (r_sel["pnl"] if r_sel else 0.0), 0.0
+
     def foot(label, h, i, o, klass=""):
         return html.Tr(className=f"tr-risk-foot {klass}".rstrip(), children=[
-            html.Td(label, colSpan=TRADE_LABEL_SPAN, className="tr-risk-lbl"),
+            html.Td(label, colSpan=span, className="tr-risk-lbl"),
             html.Td(_risk_txt(h), className="tr-risk-c"),
             html.Td(_risk_txt(i), className="tr-risk-c"),
-            html.Td(_risk_txt(o), className="tr-risk-c"),
+            html.Td(_risk_txt(o), className="tr-risk-c tr-risk-o"),
             html.Td("", className="tr-peak-c"),
             html.Td("", className="tr-peak-c tr-peak-out-c")])
 
@@ -846,9 +864,9 @@ PLANS_PANEL = html.Div(className="chart-card panel plan-panel", children=[
 ])
 
 
-def _shape_ctl(label: str, cid: str) -> html.Div:
+def _shape_ctl(label: str, cid: str, klass: str = "") -> html.Div:
     """A peak's Off · Broad · Medium · Narrow, one segmented control with its label."""
-    return html.Div(className="rungs-ctl", children=[
+    return html.Div(className=f"rungs-ctl {klass}".rstrip(), children=[
         html.Span(label, className="lad-lbl"),
         dcc.RadioItems(
             id=cid,
@@ -873,7 +891,7 @@ TRADE_PAGE = html.Div(id="trade-wrap", style={"display": "block"}, children=[
     dcc.Store(id="tr-plan-msg", data=None),       # the last save / archive message
     dcc.Store(id="tr-plan-del-armed", data=None), # the version a first Delete click armed
     html.Div(className="tr-panels", children=[
-    html.Div(className="chart-card panel tr-main", children=[
+    html.Div(id="tr-main", className="chart-card panel tr-main", children=[
 
         html.Div(className="panel-head", children=[
             dcc.RadioItems(
@@ -903,12 +921,25 @@ TRADE_PAGE = html.Div(id="trade-wrap", style={"display": "block"}, children=[
             html.Button("Save version", id="tr-plan-save", n_clicks=0, disabled=True,
                         className="plan-btn primary tr-save"),
             html.Div(className="head-break"),
+            # EXIT Off hides the way out, for showing the page to someone (desk,
+            # 2026-10-09): a view, not a plan -- every lot is sized exactly as with it On,
+            # it is not saved with a plan, and a reload brings it back On. While hidden,
+            # P&L is the position valued at the target. See the CSS for what goes.
+            html.Div(className="rungs-ctl", children=[
+                html.Span("exit", className="lad-lbl"),
+                dcc.RadioItems(
+                    id="tr-exit-on",
+                    options=[{"label": "On", "value": "on"},
+                             {"label": "Off", "value": "off"}],
+                    value="on", inline=True, inputStyle={"display": "none"},
+                    className="seg-ctrl"),
+            ]),
             # The peak's on/off and width in one control (desk, 2026-09-27). Off is the
             # page exactly as before: equal risk, and the dot kept but dimmed. PEAK OUT is
             # the same for the way out (desk, 2026-09-29): Off is equal regret. Both on
             # the second line, with the clear buttons (desk, 2026-10-08).
             _shape_ctl("peak in", "tr-shape"),
-            _shape_ctl("peak out", "tr-shape-out"),
+            _shape_ctl("peak out", "tr-shape-out", "tr-peak-out-ctl"),
             html.Div(className="lad-btns", children=[
                 html.Button("Clear skips", id="tr-clear", className="theme-btn"),
                 html.Button("Clear filled", id="tr-clear-held", className="theme-btn"),
@@ -972,7 +1003,7 @@ TRADE_PAGE = html.Div(id="trade-wrap", style={"display": "block"}, children=[
                 # picked fill-depth row, its budget the max loss box, its banked the way-out
                 # table's "now" row.
                 html.Div("if it fills this far, then works out - click a row",
-                         className="card-sub lad-depth-head"),
+                         id="tr-depth-cap", className="card-sub lad-depth-head"),
                 html.Table(id="tr-depth", className="lad-depth"),
                 html.Div(id="tr-exit-head", className="card-sub lad-depth-head"),
                 html.Table(id="tr-exit", className="lad-depth"),
@@ -1004,14 +1035,21 @@ def _out_rule(ep: dict, shape: str) -> str:
 
 @callback(
     Output("tr-mark", "placeholder"), Output("tr-caption", "children"),
-    Input("tr-side", "value"),
+    Output("tr-depth-cap", "children"),
+    Input("tr-side", "value"), Input("tr-exit-on", "value"),
 )
-def trade_mark_label(side):
+def trade_mark_label(side, exit_shown="on"):
     """Long marks to the bid, short to the ask -- the price you could get out at now.
-    And the how-to line turns over with the side: a short adds ABOVE the line."""
-    if side == "buy":
-        return "bid", "in below the line, out above it - click a size to skip"
-    return "ask", "in above the line, out below it - click a size to skip"
+    And the how-to line turns over with the side: a short adds ABOVE the line. With the
+    exit hidden, neither line speaks of a way out."""
+    word, flip = ("below", "above") if side == "buy" else ("above", "below")
+    if exit_shown == "off":
+        return (("bid" if side == "buy" else "ask"),
+                f"in {word} the line - click a size to skip",
+                "if it fills this far, then reaches the target - click a row")
+    return (("bid" if side == "buy" else "ask"),
+            f"in {word} the line, out {flip} it - click a size to skip",
+            "if it fills this far, then works out - click a row")
 
 
 @callback(
@@ -1572,6 +1610,17 @@ clientside_callback(
     Output("tr-rungs-dn", "disabled"), Output("tr-rungs-up", "disabled"),
     Input("tr-rungs", "data"),
 )
+# EXIT Off is one class on the panel: the CSS hides the way out's columns, controls and
+# table under it, so nothing has to be redrawn to hide or show them.
+clientside_callback(
+    """
+    function(v) {
+        return "chart-card panel tr-main" + (v === "off" ? " tr-exit-off" : "");
+    }
+    """,
+    Output("tr-main", "className"),
+    Input("tr-exit-on", "value"),
+)
 
 
 @callback(
@@ -1598,17 +1647,23 @@ clientside_callback(
     Input("tr-peak-store", "data"), Input("tr-shape", "value"),
     Input("tr-peak-out-store", "data"), Input("tr-shape-out", "value"),
     Input("tr-outby", "value"), Input("tr-settle", "value"),
+    Input("tr-exit-on", "value"),
 )
 def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
                max_loss, excl_in, excl_out, depth, rungs=TRADE_WINDOW_TICKS,
                peak=None, shape="off", peak_out=None, shape_out="off", out_by=None,
-               settle=None):
+               settle=None, exit_shown="on"):
     """One trade, both halves, no flipping -- and, with OUT BY, the cut past the stop.
 
     The mark loads the ladder. Everything else is optional and
     lands on rungs that are already there, and the ladder stays on screen whatever is
     wrong with the numbers -- it is how you see what is wrong.
+
+    EXIT Off (`exit_shown`) changes what is drawn, never what is sized: the way out and
+    the cut leave the ladder and the title, and every P&L is the position valued at the
+    target (`ladder.depth_table`'s pnl) instead of what the way out banks.
     """
+    exit_on = exit_shown != "off"
     s = _trade_setup(inst, side, mark, entry, held_map, sold_map, stop, first, target,
                      max_loss, excl_in, excl_out, depth, peak, shape, peak_out, shape_out,
                      out_by)
@@ -1636,11 +1691,18 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
     extra = [_use_text(t, u) for t, u in
              zip((entry, stop, first, target),
                  (s["entry"], s["stop"], s["first"], s["target"]))] + ["—", "—"]
-    typed_first = _snap(_fnum(first))
+    typed_first, typed_target = _snap(_fnum(first)), target
 
     mark, entry, stop, target = s["mark"], s["entry"], s["stop"], s["target"]
     first, max_loss, sgn = s["first"], s["max_loss"], s["sgn"]
     lp, ep, depths, sel, row = s["lp"], s["ep"], s["depths"], s["sel"], s["row"]
+    # Hidden, the exit pushes nothing: the target is the one the way in values its P&L
+    # to, and that P&L -- every depth's position at the target -- is what each depth makes.
+    banks = s["banks"]
+    if not exit_on:
+        target = lp["target"]
+        extra[3] = _use_text(typed_target, target)
+        banks = {r["depth"]: r["pnl"] for r in lp["rows"]}
     pos_d, avg_d, n_sold = s["pos_d"], s["avg_d"], s["n_sold"]
     side_word, ph = s["side_word"], s["ph"]
 
@@ -1670,11 +1732,14 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
                        peak=_snap(_fnum(peak)), shape_on=shape in ladder.PEAK_WIDTHS,
                        peak_out=_snap(_fnum(peak_out)),
                        shape_out_on=shape_out in ladder.PEAK_WIDTHS,
-                       cp=cp, risk_ref=s["risk_ref"])
+                       cp=cp, risk_ref=s["risk_ref"], exit_on=exit_on)
 
-    title = (f"{inst}   {side_word}   {entry:g} → {stop:g} in, "
-             f"{first:g} → {target:g} out")
-    if cp:
+    if exit_on:
+        title = (f"{inst}   {side_word}   {entry:g} → {stop:g} in, "
+                 f"{first:g} → {target:g} out")
+    else:
+        title = f"{inst}   {side_word}   {entry:g} → {stop:g} in, target {target:g}"
+    if cp and exit_on:
         title += f", {cp['all_levels'][0]:g} → {cp['all_levels'][-1]:g} cut"
     if s["cap_note"]:
         title += f"   ·   {s['cap_note']}"
@@ -1682,15 +1747,15 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
         title += f"   ·   {lp['held']:,} already on at {lp['held_avg']:.3f}"
     if s["peak_note"]:
         title += f"   ·   {s['peak_note']}"
-    if s["peak_out_note"]:
+    if s["peak_out_note"] and exit_on:
         title += f"   ·   {s['peak_out_note']}"
     if s["sold_note"]:                 # says the count itself, so not both
         title += f"   ·   {s['sold_note']}"
-    elif n_sold:
+    elif n_sold and exit_on:
         title += f"   ·   {n_sold:,} sold"
 
     # The P&L row: the gold-dot row's loss if stopped, and what its way out banks.
-    pnl = s["banks"].get(sel) if row else None
+    pnl = banks.get(sel) if row else None
     have_pnl = pnl is not None and pnl == pnl
     extra += [_d0(-row["loss"]) if row else "—", _d0(pnl) if have_pnl else "—"]
 
@@ -1710,7 +1775,7 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
         return (book, title, [], "no rungs between the stop and the target", [],
                 "", *ph, *extra, *ob, *stl)
 
-    depth_tbl = _trade_depth_rows(lp, sel, s["banks"])
+    depth_tbl = _trade_depth_rows(lp, sel, banks)
     if pos_d:
         head = (f"then, coming out of {pos_d:,}"
                 + (" still on" if n_sold else "") + f" at {avg_d:.3f}"
@@ -1723,11 +1788,12 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
     # to what: the one number that explains why the way in got smaller.
     cut_rule = (f", equal loss cut, risk in measured to its {s['risk_ref']:.3f} average"
                 if cp else "")
+    out_bits = (f"{_out_rule(ep, shape_out)}{cut_rule}  ·  stop excluded going "
+                f"in{' and cutting' if cp else ''}, target excluded coming out"
+                if exit_on else "P&L to the target  ·  stop excluded going in")
     foot = (f"{inst}  ·  ${lp['dollars_per_bp']:,.2f}/bp  ·  "
             f"${lp['tick_value']:,.2f}/tick  ·  {ladder.TICK}bp grid  ·  "
-            f"{_in_rule(lp, shape)}, {_out_rule(ep, shape_out)}{cut_rule}  ·  stop "
-            f"excluded going in{' and cutting' if cp else ''}, target "
-            f"excluded coming out  ·  no flipping on this page")
+            f"{_in_rule(lp, shape)}, {out_bits}  ·  no flipping on this page")
 
     return (book, title, depth_tbl, head, exit_tbl, foot, *ph, *extra, *ob, *stl)
 
@@ -1741,9 +1807,10 @@ def draw_trade(inst, side, mark, entry, held_map, sold_map, stop, first, target,
 
 PLANS_DIR = ROOT / "plans"
 
-# The board is open to the office network (desk, 2026-10-07) and the Risk book is filled
-# from these files, so only the PC the board runs on can change them. Anyone else can load
-# a plan and work the page; Save version, Save as new, Archive and Delete refuse.
+# The board can be opened to the office network (desk, 2026-10-07; this PC only again
+# since 2026-10-08) and the Risk book is filled from these files, so only the PC the board
+# runs on can change them. Anyone else can load a plan and work the page; Save version,
+# Save as new, Archive and Delete refuse.
 _HOST_ADDRS = {"127.0.0.1", "::1"}
 try:
     _HOST_ADDRS |= set(socket.gethostbyname_ex(socket.gethostname())[2])
